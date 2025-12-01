@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: Car Rentals
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/CarRentals_Database
+    username: root
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
