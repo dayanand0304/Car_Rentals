@@ -2,6 +2,7 @@ package com.CarRentalSystem.CarRentals.Controllers;
 
 import com.CarRentalSystem.CarRentals.Entities.Car;
 import com.CarRentalSystem.CarRentals.Services.CarService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,10 +13,11 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/car")
+@RequiredArgsConstructor
 public class CarController {
 
-    @Autowired
-    private CarService carService;
+
+    private final CarService carService;
 
     //GET CAR DETAILS
     @GetMapping("/get-all")

@@ -4,6 +4,7 @@ import com.CarRentalSystem.CarRentals.Entities.Rental;
 import com.CarRentalSystem.CarRentals.Services.CarService;
 import com.CarRentalSystem.CarRentals.Services.CustomerService;
 import com.CarRentalSystem.CarRentals.Services.RentalService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,16 +15,11 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/rentals")
+@RequiredArgsConstructor
 public class RentalController {
 
-    @Autowired
-    private RentalService rentalService;
 
-    @Autowired
-    private CustomerService customerService;
-
-    @Autowired
-    private CarService carService;
+    private final RentalService rentalService;
 
     //GET ALL RENTALS
     @GetMapping("/get-all")

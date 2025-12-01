@@ -6,6 +6,7 @@ import com.CarRentalSystem.CarRentals.Entities.Rental;
 import com.CarRentalSystem.CarRentals.Repositories.CarRepository;
 import com.CarRentalSystem.CarRentals.Repositories.CustomerRepository;
 import com.CarRentalSystem.CarRentals.Repositories.RentalRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,16 +19,17 @@ import java.util.Optional;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class RentalService {
 
-    @Autowired
-    private RentalRepository rentalRepository;
 
-    @Autowired
-    private CarRepository carRepository;
+    private final RentalRepository rentalRepository;
 
-    @Autowired
-    private CustomerRepository customerRepository;
+
+    private final CarRepository carRepository;
+
+
+    private final CustomerRepository customerRepository;
 
 
     //GET ALL RENTALS

@@ -2,6 +2,7 @@ package com.CarRentalSystem.CarRentals.Services;
 
 import com.CarRentalSystem.CarRentals.Entities.Car;
 import com.CarRentalSystem.CarRentals.Repositories.CarRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -12,10 +13,11 @@ import java.util.Optional;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class CarService {
 
-    @Autowired
-    private CarRepository carRepository;
+
+    private final CarRepository carRepository;
 
     //GET CAR DETAILS
     public List<Car> getAllCars(){
