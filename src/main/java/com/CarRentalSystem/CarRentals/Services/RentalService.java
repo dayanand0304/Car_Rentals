@@ -1,5 +1,6 @@
 package com.CarRentalSystem.CarRentals.Services;
 
+import com.CarRentalSystem.CarRentals.DTO.BookingStatus;
 import com.CarRentalSystem.CarRentals.Entities.Car;
 import com.CarRentalSystem.CarRentals.Entities.Customer;
 import com.CarRentalSystem.CarRentals.Entities.Rental;
@@ -89,6 +90,8 @@ public class RentalService {
         LocalDateTime start=LocalDateTime.now();
         rental.setStartTime(start);
 
+
+
         LocalDateTime expected=start.plusDays(days).plusHours(1);
         rental.setExpectedReturnTime(expected);
 
@@ -100,6 +103,7 @@ public class RentalService {
         rental.setHours(null);
 
         car.setAvailable(false);
+        rental.setStatus(BookingStatus.CONFIRMED);
         carRepository.save(car);
 
         log.info("Car With Id:{} Marked as Unavailable and Saved",carId);
@@ -161,6 +165,7 @@ public class RentalService {
         rental.setHourly(true);
 
         car.setAvailable(false);
+        rental.setStatus(BookingStatus.CONFIRMED);
         carRepository.save(car);
 
         log.info("Car With Id:{} Marked as Unavailable and Saved",carId);
@@ -205,6 +210,7 @@ public class RentalService {
         rental.setTotalPrice(totalPrice);
 
         car.setAvailable(true);
+        rental.setStatus(BookingStatus.COMPLETED);
         carRepository.save(car);
 
         log.info("Car With Id:{} Marked as Available and Saved",car.getCarId());
@@ -243,6 +249,7 @@ public class RentalService {
 
         Car car=rental.getCar();
         car.setAvailable(true);
+        rental.setStatus(BookingStatus.CANCELLED);
         carRepository.save(car);
 
         log.info("Car With Id:{} Marked as Available and Saved",car.getCarId());
