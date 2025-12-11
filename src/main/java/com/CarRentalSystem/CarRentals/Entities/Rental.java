@@ -2,7 +2,6 @@ package com.CarRentalSystem.CarRentals.Entities;
 
 import com.CarRentalSystem.CarRentals.DTO.BookingStatus;
 import jakarta.persistence.*;
-import jakarta.persistence.criteria.Fetch;
 import lombok.Data;
 
 import java.time.LocalDateTime;
