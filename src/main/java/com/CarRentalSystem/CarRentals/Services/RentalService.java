@@ -245,7 +245,6 @@ public class RentalService {
             log.warn("Request To Cancel After Return for RentalId:{}",rentalId);
             throw new RuntimeException("Cannot Cancel A Rental That it has Already Returned");
         }
-
         Car car=rental.getCar();
         car.setAvailable(true);
         rental.setStatus(BookingStatus.CANCELLED);
