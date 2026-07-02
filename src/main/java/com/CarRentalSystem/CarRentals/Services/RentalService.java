@@ -2,6 +2,8 @@ package com.CarRentalSystem.CarRentals.Services;
 
 import com.CarRentalSystem.CarRentals.CustomExceptions.Cars.CarNotAvailableException;
 import com.CarRentalSystem.CarRentals.CustomExceptions.Cars.CarNotFoundException;
+import com.CarRentalSystem.CarRentals.CustomExceptions.Cars.CarNotActiveException;
+import com.CarRentalSystem.CarRentals.CustomExceptions.Customers.CustomerInActiveException;
 import com.CarRentalSystem.CarRentals.CustomExceptions.Customers.CustomerNotFoundException;
 import com.CarRentalSystem.CarRentals.CustomExceptions.Rentals.*;
 import com.CarRentalSystem.CarRentals.DTO.PageMapper;
@@ -131,15 +133,19 @@ public class RentalService {
         Customer customer = resolveBookingCustomer(customerId, requesterEmail, admin);
 
         if(!customer.isActive()){
-            throw new CustomerNotFoundException(customer.getCustomerId());
+            throw new CustomerInActiveException();
         }
 
         log.info("Fetching Car With Id:{}",carId);
-        Car car=carRepository.findById(carId)
+        Car car=carRepository.findByIdForUpdate(carId)
                 .orElseThrow(()->{
                     log.error("Car With Id:{} Not Found",carId);
                     return new CarNotFoundException(carId);
                 });
+
+        if(!car.getActive()){
+            throw new CarNotActiveException(carId);
+        }
 
         if(!car.getAvailable()){
             log.warn("Car With Id:{} is Not Available",carId);
@@ -338,6 +344,7 @@ public class RentalService {
 
         if(rental.getStatus()==BookingStatus.CANCELLED ||
                 rental.getActualReturnTime() != null ||
+                rental.getStatus() == BookingStatus.COMPLETED ||
                 rental.getStatus() == BookingStatus.COMPLETED_WITH_DAMAGED){
             throw new CannotCancelException();
         }

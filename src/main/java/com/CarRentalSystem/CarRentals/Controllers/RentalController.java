@@ -72,19 +72,6 @@ public class RentalController {
         return ResponseEntity.ok(rentals);
     }
 
-    // GET RENTAL BY ID
-    @Operation(
-            summary = "Get Rental by ID",
-            description = "Fetch a rental using its unique rental ID"
-    )
-    @ApiResponse(responseCode = "200", description = "Rental found",
-            content = @Content(schema = @Schema(implementation = RentalResponse.class)))
-    @ApiResponse(responseCode = "404", description = "Rental not found")
-    @GetMapping("/{rentalId}")
-    public ResponseEntity<RentalResponse> getRentalById(@PathVariable Integer rentalId) {
-        return ResponseEntity.ok(rentalService.getRentalByRentalId(rentalId));
-    }
-
     // GET DAMAGED RENTALS
     @Operation(
             summary = "Get Damaged Rentals",
@@ -111,6 +98,19 @@ public class RentalController {
             @ParameterObject @PageableDefault(size = 10, sort = "rentalId") Pageable pageable) {
 
         return ResponseEntity.ok(rentalService.getAllOverdueRentals(pageable));
+    }
+
+    // GET RENTAL BY ID
+    @Operation(
+            summary = "Get Rental by ID",
+            description = "Fetch a rental using its unique rental ID"
+    )
+    @ApiResponse(responseCode = "200", description = "Rental found",
+            content = @Content(schema = @Schema(implementation = RentalResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Rental not found")
+    @GetMapping("/{rentalId}")
+    public ResponseEntity<RentalResponse> getRentalById(@PathVariable Integer rentalId) {
+        return ResponseEntity.ok(rentalService.getRentalByRentalId(rentalId));
     }
 
     // RENT A CAR

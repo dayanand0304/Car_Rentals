@@ -24,7 +24,8 @@ public class GlobalExceptionHandler {
             CustomerNotFoundException.class,
             RentalNotFoundException.class,
             RentalNotFoundByCustomerIdException.class,
-            RentalNotFoundByCarIdException.class
+            RentalNotFoundByCarIdException.class,
+            RefreshTokenNotFoundException.class
     })
     public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException ex,
                                                         HttpServletRequest request) {

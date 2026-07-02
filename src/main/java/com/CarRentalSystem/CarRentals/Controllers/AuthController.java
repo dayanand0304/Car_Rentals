@@ -1,6 +1,7 @@
 package com.CarRentalSystem.CarRentals.Controllers;
 
 import com.CarRentalSystem.CarRentals.DTO.Request.LoginRequest;
+import com.CarRentalSystem.CarRentals.DTO.Request.RefreshTokenRequest;
 import com.CarRentalSystem.CarRentals.DTO.Request.RegisterRequest;
 import com.CarRentalSystem.CarRentals.DTO.Response.AuthResponse;
 import com.CarRentalSystem.CarRentals.DTO.Response.CustomerResponse;
@@ -62,6 +63,29 @@ public class AuthController {
 
         String accessToken = jwtService.generateToken(customer.getCustomerEmail());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(customer);
+
+        return ResponseEntity.ok(
+                new AuthResponse(accessToken, refreshToken.getToken())
+        );
+    }
+
+    // REFRESH ACCESS TOKEN
+    @Operation(summary = "Refresh Access Token",
+            description = "Issue a new access token using a valid refresh token")
+    @ApiResponse(responseCode = "200", description = "Token refreshed successfully",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Refresh token expired",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Refresh token not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refreshAccessToken(
+            @Valid @RequestBody RefreshTokenRequest request) {
+
+        RefreshToken refreshToken = refreshTokenService.findByToken(request.getRefreshToken());
+        refreshTokenService.VerifyTokenExpiry(refreshToken);
+
+        String accessToken = jwtService.generateToken(refreshToken.getCustomer().getCustomerEmail());
 
         return ResponseEntity.ok(
                 new AuthResponse(accessToken, refreshToken.getToken())
