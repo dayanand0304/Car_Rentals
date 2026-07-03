@@ -15,21 +15,24 @@ import com.CarRentalSystem.CarRentals.Enums.RentalType;
 import com.CarRentalSystem.CarRentals.Entities.Car;
 import com.CarRentalSystem.CarRentals.Entities.Customer;
 import com.CarRentalSystem.CarRentals.Entities.Rental;
+import com.CarRentalSystem.CarRentals.Events.BookingCompletedEvent;
+import com.CarRentalSystem.CarRentals.Events.CarDamagedEvent;
+import com.CarRentalSystem.CarRentals.Events.RentalOverdueEvent;
 import com.CarRentalSystem.CarRentals.Repositories.CarRepository;
 import com.CarRentalSystem.CarRentals.Repositories.CustomerRepository;
 import com.CarRentalSystem.CarRentals.Repositories.RentalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 
 @Service
 @Slf4j
@@ -40,6 +43,9 @@ public class RentalService {
     private final RentalRepository rentalRepository;
     private final CarRepository carRepository;
     private final CustomerRepository customerRepository;
+    private final PricingService pricingService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final CarCacheService carCacheService;
 
 
     //1.GET ALL RENTALS
@@ -172,21 +178,16 @@ public class RentalService {
             rental.setExpectedReturnTime(rental.getStartTime().plusHours(duration));
         }
 
-        BigDecimal totalPrice=calculatePrice(car,rentalType,duration);
+        PricingService.BookingPricing pricing = pricingService.calculateBookingPricing(car, rentalType, duration);
 
-        BigDecimal tax=totalPrice.multiply(new BigDecimal("0.18"));
-
-        BigDecimal discount=calculateDiscount(totalPrice,rental.getRentalType(),rental.getDuration());
-
-        BigDecimal grandTotal=totalPrice.add(tax).subtract(discount);
-
-        rental.setTotalPrice(totalPrice);
-        rental.setTaxAmount(tax);
-        rental.setDiscountAmount(discount);
-        rental.setGrandTotal(grandTotal);
+        rental.setTotalPrice(pricing.totalPrice());
+        rental.setTaxAmount(pricing.taxAmount());
+        rental.setDiscountAmount(pricing.discountAmount());
+        rental.setGrandTotal(pricing.grandTotal());
 
         car.setAvailable(false);
         carRepository.save(car);
+        carCacheService.evictAvailableCarsCache();
 
         Rental saved=rentalRepository.save(rental);
         log.info("Rental Created With RentalId:{}",saved.getRentalId());
@@ -217,117 +218,68 @@ public class RentalService {
             throw new RentalAlreadyReturnedException();
         }
         Car car=rental.getCar();
+        LocalDateTime returnTime = LocalDateTime.now();
 
-        calculateGrandTotal(rental,damaged,damagedFee);
+        applyReturnPricing(rental, damaged, damagedFee, returnTime);
 
         carRepository.save(car);
+        carCacheService.evictAvailableCarsCache();
         Rental saved=rentalRepository.save(rental);
+        publishReturnEvents(saved, damaged);
         log.info("Rental with id:{} updated on return", saved.getRentalId());
         return RentalMapper.response(saved);
     }
 
-    //CALCULATING PRICE BASED ON RENTAL TYPE
-    private BigDecimal calculatePrice(
-            Car car,
-            RentalType rentalType,
-            int duration
-    ) {
-        return switch (rentalType) {
+    private void applyReturnPricing(Rental rental, Boolean damaged, BigDecimal damagedFee, LocalDateTime returnTime) {
+        PricingService.ReturnPricing pricing = pricingService.calculateReturnPricing(
+                rental, damaged, damagedFee, returnTime
+        );
 
-            case DAILY ->
-                    BigDecimal.valueOf(car.getCarRentPerDay())
-                            .multiply(BigDecimal.valueOf(duration));
-            case HOURLY -> {
-                BigDecimal hourlyRate =
-                        BigDecimal.valueOf(car.getCarRentPerDay())
-                                .divide(BigDecimal.valueOf(24), 2, RoundingMode.HALF_UP);
+        Car car = rental.getCar();
 
-                yield hourlyRate.multiply(BigDecimal.valueOf(duration));
-            }
-        };
-    }
-
-    //CALCULATE DISCOUNT
-    private BigDecimal calculateDiscount(BigDecimal basePrice,
-                                         RentalType rentalType,
-                                         int duration) {
-
-        BigDecimal discount = BigDecimal.ZERO;
-
-        if (rentalType == RentalType.DAILY) {
-
-            if (duration > 20) {
-                discount = basePrice.multiply(new BigDecimal("0.20"));
-            } else if (duration > 10) {
-                discount = basePrice.multiply(new BigDecimal("0.15"));
-            } else if (duration > 7) {
-                discount = basePrice.multiply(new BigDecimal("0.10"));
-            }
-        }
-
-        return discount.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    //CALCULATE GRAND TOTAL
-    private void calculateGrandTotal(Rental rental,Boolean damaged,BigDecimal damagedFee){
-
-        BigDecimal totalPrice=rental.getTotalPrice();
-        BigDecimal discount=BigDecimal.ZERO;
-        BigDecimal damageCost=BigDecimal.ZERO;
-        BigDecimal lateFee=BigDecimal.ZERO;
-
-        Car car=rental.getCar();
-        LocalDateTime now=LocalDateTime.now();
-        LocalDateTime expected=rental.getExpectedReturnTime();
-
-        //LATE FEE
-        if(now.isAfter(expected)){
-            long extraHours= Math.max(1,
-                    ChronoUnit.HOURS.between(expected,LocalDateTime.now()));
-
-            BigDecimal rentPerHour= BigDecimal.valueOf(car.getCarRentPerDay())
-                    .divide(BigDecimal.valueOf(24),2,RoundingMode.HALF_UP);
-
-            BigDecimal fineHour=BigDecimal.valueOf(50);
-
-            lateFee = rentPerHour.add(fineHour)
-                    .multiply(BigDecimal.valueOf(extraHours));
-        }
-
-        //DAMAGE
-        if(Boolean.TRUE.equals(damaged)){
-            if(damagedFee==null){
-                throw new DamagedFeeNullException();
-            }
-
-            damageCost=damagedFee;
+        if (Boolean.TRUE.equals(damaged)) {
             rental.setDamaged(true);
             rental.setStatus(BookingStatus.COMPLETED_WITH_DAMAGED);
             car.setAvailable(false);
-        }else {
+        } else {
             rental.setStatus(BookingStatus.COMPLETED);
             car.setAvailable(true);
         }
 
-        //SUBTOTAL
-        BigDecimal subTotal=totalPrice
-                .add(lateFee)
-                .add(damageCost);
+        rental.setActualReturnTime(returnTime);
+        rental.setTaxAmount(pricing.taxAmount());
+        rental.setDiscountAmount(pricing.discountAmount());
+        rental.setDamagedFee(pricing.damageCost());
+        rental.setLateFee(pricing.lateFee());
+        rental.setGrandTotal(pricing.grandTotal());
+    }
 
-        BigDecimal tax=subTotal
-                .multiply(new BigDecimal("0.18"))
-                .setScale(2,RoundingMode.HALF_UP);
+    private void publishReturnEvents(Rental rental, Boolean damaged) {
+        if (Boolean.TRUE.equals(damaged)) {
+            eventPublisher.publishEvent(new CarDamagedEvent(
+                    rental.getRentalId(),
+                    rental.getCar().getCarId(),
+                    rental.getCustomer().getCustomerId(),
+                    rental.getDamagedFee()
+            ));
+        } else {
+            eventPublisher.publishEvent(new BookingCompletedEvent(
+                    rental.getRentalId(),
+                    rental.getCar().getCarId(),
+                    rental.getCustomer().getCustomerId(),
+                    rental.getGrandTotal()
+            ));
+        }
 
-        discount=calculateDiscount(totalPrice,rental.getRentalType(),rental.getDuration());
-
-        BigDecimal grandTotal=subTotal.add(tax).subtract(discount);
-
-        rental.setActualReturnTime(now);
-        rental.setTaxAmount(tax);
-        rental.setDiscountAmount(discount);
-        rental.setDamagedFee(damageCost);
-        rental.setLateFee(lateFee);
-        rental.setGrandTotal(grandTotal);
+        if (rental.getLateFee() != null && rental.getLateFee().signum() > 0) {
+            eventPublisher.publishEvent(new RentalOverdueEvent(
+                    rental.getRentalId(),
+                    rental.getCar().getCarId(),
+                    rental.getCustomer().getCustomerId(),
+                    rental.getExpectedReturnTime(),
+                    rental.getLateFee()
+            ));
+        }
     }
 
     //9.CANCEL A CAR
@@ -356,6 +308,7 @@ public class RentalService {
         rental.setCanceledTime(LocalDateTime.now());
 
         carRepository.save(car);
+        carCacheService.evictAvailableCarsCache();
 
         log.info("Car With Id:{} Marked as Available and Saved",car.getCarId());
         rentalRepository.save(rental);
@@ -384,8 +337,24 @@ public class RentalService {
         car.setAvailable(true);
 
         carRepository.save(car);
+        carCacheService.evictAvailableCarsCache();
 
         log.info("Car {} marked as repaired and available", carId);
+    }
+
+    @Scheduled(fixedRateString = "${app.scheduling.overdue-check-ms:3600000}")
+    @Transactional(readOnly = true)
+    public void publishOverdueRentalEvents() {
+        LocalDateTime now = LocalDateTime.now();
+        rentalRepository.findByActualReturnTimeIsNullAndExpectedReturnTimeBefore(
+                now, Pageable.unpaged()
+        ).forEach(rental -> eventPublisher.publishEvent(new RentalOverdueEvent(
+                rental.getRentalId(),
+                rental.getCar().getCarId(),
+                rental.getCustomer().getCustomerId(),
+                rental.getExpectedReturnTime(),
+                BigDecimal.ZERO
+        )));
     }
 
     private Customer resolveBookingCustomer(Integer customerId, String requesterEmail, boolean admin) {

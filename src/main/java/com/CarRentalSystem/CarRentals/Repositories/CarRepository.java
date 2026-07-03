@@ -29,6 +29,7 @@ public interface CarRepository extends JpaRepository<Car,Integer> {
     Page<Car> findByFuelType(FuelType fuelType,Pageable pageable);
     Page<Car> findBySeats(SeatType seats,Pageable pageable);
     Page<Car> findByAvailableTrue(Pageable pageable);
+    Page<Car> findByAvailableTrueAndActiveTrue(Pageable pageable);
     Page<Car> findByAvailable(Boolean available, Pageable pageable);
     Page<Car> findByCarBrandContainingIgnoreCaseAndAvailableTrue(String carBrand,Pageable pageable);
     Page<Car> findByCarBrandContainingIgnoreCaseAndAvailable(String carBrand, Boolean available, Pageable pageable);

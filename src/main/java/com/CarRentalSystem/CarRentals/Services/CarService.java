@@ -13,6 +13,7 @@ import com.CarRentalSystem.CarRentals.Enums.SeatType;
 import com.CarRentalSystem.CarRentals.Repositories.CarRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class CarService {
 
 
     private final CarRepository carRepository;
+    private final CarCacheService carCacheService;
 
     //1.GET ALL CAR DETAILS
     public PageResponse<CarResponse> getAllCars(Pageable pageable){
@@ -55,16 +57,27 @@ public class CarService {
     }
 
     //3.GET AVAILABLE CARS
+    @Cacheable(
+            value = CarCacheService.AVAILABLE_CARS_CACHE,
+            key = "'available-' + #pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort"
+    )
     public PageResponse<CarResponse> getAvailableCars(Pageable pageable){
         log.info("Fetching Available Cars");
-        Page<Car> page=carRepository.findByAvailableTrue(pageable);
+        Page<Car> page=carRepository.findByAvailableTrueAndActiveTrue(pageable);
 
         return PageMapper.toPageResponse(page,CarMapper::response);
     }
 
+    @Cacheable(
+            value = CarCacheService.AVAILABLE_CARS_CACHE,
+            key = "'availability-' + #available + '-' + #pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort",
+            condition = "#available == true"
+    )
     public PageResponse<CarResponse> getCarsByAvailability(Boolean available, Pageable pageable){
         log.info("Fetching Cars By Availability:{}", available);
-        Page<Car> page = carRepository.findByAvailable(available, pageable);
+        Page<Car> page = Boolean.TRUE.equals(available)
+                ? carRepository.findByAvailableTrueAndActiveTrue(pageable)
+                : carRepository.findByAvailable(available, pageable);
 
         return PageMapper.toPageResponse(page,CarMapper::response);
     }
@@ -184,6 +197,7 @@ public class CarService {
         log.info("Adding New Car Of Brand:{} and Model:{}", car.getCarBrand(),car.getCarModel());
 
         Car saved=carRepository.save(car);
+        carCacheService.evictAvailableCarsCache();
         log.info("Added New Car with id:{}",saved.getCarId());
         return CarMapper.response(saved);
     }
@@ -203,6 +217,7 @@ public class CarService {
         car.setAvailable(false);
         car.setDeletedAt(LocalDateTime.now());
         carRepository.save(car);
+        carCacheService.evictAvailableCarsCache();
         log.info("Car with id:{} deleted successfully", carId);
     }
 
@@ -219,6 +234,7 @@ public class CarService {
         car.setAvailable(true);
         car.setDeletedAt(null);
         carRepository.save(car);
+        carCacheService.evictAvailableCarsCache();
     }
 
     //15.UPDATE CAR DETAILS
@@ -262,6 +278,7 @@ public class CarService {
                     }
 
                     Car saved=carRepository.save(existingDetails);
+                    carCacheService.evictAvailableCarsCache();
                     log.info("Car with id:{} updated successfully", saved.getCarId());
                     return CarMapper.response(saved);
                 })
