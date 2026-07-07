@@ -1,359 +1,206 @@
-# 🚗 Car Rentals Platform
-**Enterprise-grade backend system for managing car rental operations with real-world business logic, security, and scalable architecture.**
+# 🚗 Car Rentals API
 
-<p align="center">
-  <b>Built with Java • Spring Boot • JWT • Docker • H2 • PostgreSQL</b>
-</p>
+Backend service for managing car inventory, customers, authentication, and the full rental lifecycle for a car rental platform.
 
-<p align="center">
-  <a href="https://car-rentals-z9i2.onrender.com">🌐 Live Demo</a> •
-  <a href="https://car-rentals-z9i2.onrender.com/swagger-ui/index.html">📄 API Docs</a>
-</p>
+Built with Java 17, Spring Boot, Spring Security, JPA, Redis caching, Docker, and OpenAPI.
 
----
+## 🔗 Quick Links
 
-# 🧠 Product Vision
+- 🌐 Live Demo: [Car Rentals API](https://car-rentals-z9i2.onrender.com)
+- 📘 Swagger UI: [API Documentation](https://car-rentals-z9i2.onrender.com/swagger-ui/index.html)
 
-This project is designed as a real-world car rental backend system, inspired by platforms like Zoomcar and Hertz.
+## ✨ Overview
 
-It focuses on:
-- Accurate billing & pricing logic
-- Secure authentication & authorization
-- Data integrity & maintainability
-- Scalable backend architecture
-- Real-world rental lifecycle management
+This project models a real rental workflow instead of just basic CRUD.
 
----
+- JWT authentication with refresh tokens
+- Role-based access for `ADMIN` and `CUSTOMER`
+- Car search, pricing, booking, return, cancellation, and repair flows
+- Daily and hourly rentals with tax, discount, late-fee, and damage-fee calculations
+- Soft delete for cars and customers
+- Cache support for available-car listings
+- Dockerized local environment with PostgreSQL and Redis
+- Swagger UI for API exploration
 
-# ✨ Key Highlights
+## 🧩 Core Features
 
-- 💰 **Advanced Pricing Engine**  
-  Calculates total rental cost including taxes, late fees, and damage penalties
+### 🔐 Authentication
+- Register and login flows
+- JWT access token generation
+- Refresh token support
+- Stateless Spring Security configuration
 
-- 🔄 **Soft Delete Strategy (Production Pattern)**  
-  Uses `ACTIVE / INACTIVE` states instead of deletion to preserve historical data
+### 🚘 Car Management
+- Create, update, deactivate, and reactivate cars
+- Filter by brand, model, fuel type, seat type, availability, price range, and registration number
+- Availability checks for booking workflows
 
-- 🔧 **Damage & Repair Lifecycle**  
-  Cars move through states: `AVAILABLE → RENTED → DAMAGED → REPAIRED → AVAILABLE`
+### 📦 Rental Management
+- Rent a car as an admin or as the authenticated customer
+- Return cars with late-fee and damage-fee handling
+- Cancel active rentals
+- Track overdue and damaged rentals
+- Mark damaged cars as repaired and available again
 
-- 📊 **Operational Insights**  
-  Track overdue rentals and damaged rentals separately
+### 🧠 Business Logic
+- Daily and hourly pricing
+- Tax calculation
+- Duration-based discounts
+- Late return penalties
+- Damage fee handling
+- Event publishing for completed, damaged, and overdue rentals
 
-- 🔐 **JWT-Based Security**  
-  Stateless authentication with secure API access
-
-- 📄 **Interactive Swagger Documentation**  
-  Explore and test APIs directly
-
-- 🐳 **Dockerized Deployment**  
-  Containerized for easy deployment and scalability
-
----
-
----
-
-# 📈 Project Scale
-
-- 30+ REST APIs
-- Layered enterprise architecture
-- JWT secured endpoints
-- Dockerized application
-- PostgreSQL production deployment
-- Swagger API documentation
-- Production-ready exception handling
-
----
-
-# 🏗️ System Architecture
-
-## 📌 High-Level Architecture
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-
-A[Client / Frontend / Postman / Swagger] --> B[Spring Security Filter]
-B --> C[REST Controllers]
-C --> D[Service Layer]
-D --> E[Repository Layer]
-E --> F[(MySQL / PostgreSQL)]
-
-B --> G[JWT Authentication]
-C --> H[Global Exception Handler]
-D --> I[Business Logic Engine]
-
+    A["Client / Swagger / Postman"] --> B["Spring Security + JWT Filter"]
+    B --> C["REST Controllers"]
+    C --> D["Service Layer"]
+    D --> E["JPA Repositories"]
+    E --> F["H2 / PostgreSQL"]
+    D --> G["Redis Cache (optional)"]
+    D --> H["Pricing + Rental Rules"]
+    D --> I["Spring Events"]
 ```
 
----
-
-## 🧩 Internal Layered Architecture
-
-```mermaid
-flowchart TD
-
-A[Client]
-B[REST Controller Layer]
-C[DTO Layer]
-D[Mapper Layer]
-E[Service Layer]
-F[Repository Layer]
-G[(Database)]
-
-A --> B
-B --> C
-C <--> D
-D --> E
-E --> F
-F --> G
-```
-
----
-
-## 🚘 Rental Lifecycle Workflow
+## 🔄 Rental Lifecycle
 
 ```mermaid
 stateDiagram-v2
-
-AVAILABLE --> RENTED
-RENTED --> DAMAGED
-DAMAGED --> REPAIRED
-REPAIRED --> AVAILABLE
+    [*] --> AVAILABLE
+    AVAILABLE --> RENTED
+    RENTED --> COMPLETED
+    RENTED --> COMPLETED_WITH_DAMAGED
+    RENTED --> CANCELLED
+    COMPLETED_WITH_DAMAGED --> REPAIRED
+    REPAIRED --> AVAILABLE
 ```
 
----
+## 🛠️ Tech Stack
 
-# 🗄️ Database Design
+| Area | Tools |
+| --- | --- |
+| Language | Java 17 |
+| Framework | Spring Boot 3 |
+| Security | Spring Security, JWT |
+| Persistence | Spring Data JPA, Hibernate |
+| Databases | H2, PostgreSQL |
+| Cache | Spring Cache, Redis |
+| API Docs | springdoc OpenAPI / Swagger UI |
+| Build | Maven |
+| Containers | Docker, Docker Compose |
+| Testing | JUnit 5, Spring Boot Test, Spring Security Test, Testcontainers |
 
-## 📌 Core Entities
+## 📡 API Surface
 
-- User
-- Car
-- Rental
+The project currently exposes about 30 REST endpoints across:
 
-## 🧩 Entity Relationship Diagram
+- `AuthController`
+- `CarController`
+- `RentalController`
+- `CustomerController`
+- health and home endpoints
 
-```mermaid
-erDiagram
+### 📚 Main Modules
 
-USER ||--o{ RENTAL : creates
-CAR ||--o{ RENTAL : assigned_to
+| Module | What it covers |
+| --- | --- |
+| Authentication | register, login, refresh token |
+| Cars | inventory, filters, pricing range, activation state |
+| Rentals | booking, returns, cancellations, overdue and damaged tracking |
+| Customers | admin-only customer management |
+| Operations | health check, event-driven lifecycle logging |
 
-USER {
-  Long id
-  String name
-  String email
-  String password
-}
-
-CAR {
-  Long id
-  String brand
-  String model
-  String status
-}
-
-RENTAL {
-  Long id
-  LocalDate startDate
-  LocalDate endDate
-  Double totalCost
-}
-```
----
-
-# 📌 Design Decisions
-
-- Soft delete using status fields
-- Relational mapping using JPA/Hibernate
-- Normalized database schema
-- Production-oriented entity relationships
-
----
-
-# ⚙️ Cross-Cutting Concerns
-
-- 🔐 JWT Authentication Filter
-- ⚠️ Global Exception Handling
-- 🔄 Transaction Management
-- 🧾 DTO Mapping Layer
-- 📊 Validation & Error Responses
-
----
-
-# 🔐 Security Features
-
-- JWT Stateless Authentication
-- BCrypt Password Encryption
-- Protected Secure APIs
-- Token Validation Filter
-- Unauthorized Access Handling
-- Secure Authentication Flow
-
----
-
-# 📌 Core API Modules
-
-| Module | Features |
-|---|---|
-| Authentication | Login & JWT token generation |
-| Car Management | Add, update, availability tracking |
-| Rental Management | Rent, return, overdue handling |
-| Pricing Engine | Billing, penalties, tax calculations |
-| Damage Management | Damage & repair tracking |
-| Reporting | Operational insights |
-
----
-
-# 🏭 Production-Oriented Design Decisions
-
-- Layered architecture for maintainability
-- DTO pattern to avoid entity exposure
-- Centralized exception handling
-- Stateless authentication
-- Environment-based configuration
-- Production deployment using PostgreSQL
-- Docker containerization support
-
----
-
-# 🛠️ Tech Stack
-
-## Backend
-- Java 17+
-- Spring Boot
-- Spring Security
-- Spring Data JPA (Hibernate)
-
-## Database
-- H2 (default local / standalone run)
-- PostgreSQL (production or env-based deployment)
-
-## Dev Tools
-- Swagger (OpenAPI)
-- Docker
-- Maven
-
----
-
-# 📁 Project Structure
+## 📁 Project Structure
 
 ```text
-src/main/java/com/carrentals
-│
-├── controller
-├── service
-├── repository
-├── entity
-├── dto
-├── mapper
-├── security
-├── config
-├── exception
-└── util
+src/
+  main/
+    java/com/CarRentalSystem/CarRentals/
+      Config/
+      Controllers/
+      DTO/
+      Entities/
+      Enums/
+      Events/
+      ExceptionHandler/
+      Listeners/
+      Repositories/
+      Security/
+      Services/
+    resources/
+      application.yaml
+  test/
+    java/com/CarRentalSystem/CarRentals/
+      Controllers/
+      integration/
+      Listeners/
+      Security/
+      Services/
 ```
 
----
+## ⚙️ Local Setup
 
-# ⚙️ Getting Started
+### ✅ Prerequisites
 
-## 🔧 Prerequisites
 - Java 17+
-- Maven
+- Maven or the included Maven wrapper
+- Docker (only needed for containerized run or Testcontainers-based integration tests)
 
----
+### 1. Run locally with H2
 
-# 📥 Clone the Repository
-
-```bash
-git clone https://github.com/dayanand0304/Car_Rentals.git
-cd Car_Rentals
-```
----
-
-# ⚙️ Configure Database
-
-The project now runs standalone with an in-memory H2 database by default.
-
-Set these environment variables only when you want PostgreSQL or another external database:
+The app uses in-memory H2 by default, so you can start it without installing PostgreSQL or Redis.
 
 ```bash
-DB_URL=jdbc:postgresql://localhost:5432/car_rentals
-DB_USERNAME=your_username
-DB_PASSWORD=your_password
-JWT_SECRET=replace-with-a-long-random-secret
+./mvnw spring-boot:run
 ```
----
 
-# ▶️ Run Locally
+App URLs:
+
+- API root: `http://localhost:8080/`
+- Health: `http://localhost:8080/api/health`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+
+### 2. Run with Docker Compose
+
+This starts the app with PostgreSQL and Redis.
 
 ```bash
-  mvn clean install
-  mvn spring-boot:run
+docker compose up --build
 ```
 
-By default this starts with H2 for quick local demos. Tests use a separate `test` profile with isolated H2 data.
+### 🧾 Useful Environment Variables
 
----
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `PORT` | application port | `8080` |
+| `DB_URL` | datasource URL | H2 in-memory database |
+| `DB_USERNAME` | datasource username | `sa` |
+| `DB_PASSWORD` | datasource password | empty |
+| `DDL_AUTO` | Hibernate schema mode | `update` |
+| `CACHE_TYPE` | cache provider | `simple` |
+| `REDIS_HOST` | Redis hostname | `localhost` |
+| `REDIS_PORT` | Redis port | `6379` |
+| `JWT_SECRET` | signing key for JWT tokens | configured via property fallback |
+| `JWT_EXPIRATION` | access token TTL in ms | `3600000` |
+| `AVAILABLE_CARS_CACHE_TTL` | cache TTL for available cars | `90` |
+| `OVERDUE_CHECK_MS` | overdue scan interval | `3600000` |
 
-# 🐳 Run with Docker
+## 🔑 Example Authentication Flow
 
-```bash
-  docker build -t car-rentals .
-  docker run -p 8080:8080 car-rentals
-```
-
----
-
-# 🔐 Authentication Flow
-
-```text
-User Login
-    ↓
-Generate JWT Token
-    ↓
-Send Token in Header
-    ↓
-Validate Token
-    ↓
-Access Secured APIs
-```
-
-## Authorization Header
+### Register
 
 ```http
-Authorization: Bearer <JWT_TOKEN>
+POST /auth/register
 ```
 
----
-
-
-# 📚 API Documentation
-
-<p align="left">
-  <a href="https://car-rentals-z9i2.onrender.com/swagger-ui/index.html">📄 Swagger Documentation</a>
-</p>
-
-### Features 
- 
-- Test APIs directly
-- Explore request/response schemas
-- Understand endpoint flows
-- Validate secured APIs
-
----
-
-# 🧪 API Example
-
-## 🔑 Login API
-
-### Endpoint
+### Login
 
 ```http
 POST /auth/login
+Content-Type: application/json
 ```
-
----
-
-### Request
 
 ```json
 {
@@ -362,107 +209,81 @@ POST /auth/login
 }
 ```
 
----
-
 ### Response
 
 ```json
 {
-  "accessToken": "your_jwt_token",
-  "refreshToken": "your_refresh_token"
+  "accessToken": "jwt-access-token",
+  "refreshToken": "refresh-token"
 }
 ```
 
-## Rental Booking Note
+### Auth Header
 
-- `CUSTOMER` users can book cars for themselves. Their authenticated account is used automatically.
-- `ADMIN` users can create bookings for any customer by providing `customerId`.
+```http
+Authorization: Bearer <JWT_TOKEN>
+```
 
----
+## 🧪 Testing
 
-# 📸 Screenshots
+Run the automated test suite with:
 
-## Swagger Documentation 
+```bash
+./mvnw test
+```
+
+Current coverage includes:
+
+- pricing logic tests
+- JWT service tests
+- custom user-details service tests
+- controller security tests
+- event listener smoke test
+- soft-delete integration tests with Testcontainers
+
+Note: Testcontainers-based integration tests are skipped automatically when Docker is unavailable.
+
+## 🚀 Deployment
+
+- `Dockerfile` uses a multi-stage build
+- `docker-compose.yml` runs the app with PostgreSQL and Redis
+- AWS deployment notes are available in [docs/aws-ec2-deployment.md](docs/aws-ec2-deployment.md)
+
+## 📸 Screenshots
+
+### Swagger Overview
 
 <p align="center">
-  <img src="screenshots/swagger-overview.png" width="900"/>
+  <img src="screenshots/swagger-overview.png" width="900" alt="Swagger overview"/>
 </p>
 
----
-
-## All APIs
+### API Listing
 
 <p align="center">
-  <img src="screenshots/apis.png" width="900"/>
+  <img src="screenshots/apis.png" width="900" alt="API listing"/>
 </p>
 
----
-
-## JWT Login Response
+### Login Response
 
 <p align="center">
-  <img src="screenshots/login-response.png" width="900"/>
+  <img src="screenshots/login-response.png" width="900" alt="Login response"/>
 </p>
 
----
-
-## Database Schema
+### Database Overview
 
 <p align="center">
-  <img src="screenshots/database-overview.png" width="900"/>
+  <img src="screenshots/database-overview.png" width="900" alt="Database overview"/>
 </p>
 
----
+## 🌱 Future Improvements
 
-
-# 📦 Deployment
-
-<p align="left">
-  <a href="https://car-rentals-z9i2.onrender.com"> 🌐 Live Application</a>
-</p>
-
-- Deployed and accessible via public URL with fully functional APIs.
-
-## 🚀 Deployment Stack
-
-- Render (Cloud Hosting)
-- PostgreSQL (Production Database)
-- Environment-based configuration
-
----
-
-# 🧪 Testing
-
-## Manual API Testing using:
-- Swagger UI
-- Postman
-
----
-
-# 🚀 Future Enhancements
-
-- 🧪 Add JUnit & Mockito testing
-- 🔗 Integration testing with Spring Boot Test
-- ⚙️ CI/CD using GitHub Actions
-- 📦 Multi-stage Docker builds
-- 📊 Monitoring with Spring Actuator & Prometheus
-- 📧 Email notification system
-- 📱 Frontend integration
-
----
-
-
-# 📄 License
-
-This project is licensed under the MIT License.
-
----
+- add CI pipeline for build, test, and image publish
+- add metrics and monitoring
+- move secrets fully to environment-specific secret managers
+- add notification integrations for overdue or damaged rentals
+- expand integration coverage around booking and return workflows
 
 ## 👨‍💻 Author
 
-**Dayanand**  
-Backend Developer | Java & Spring Boot
-
-- GitHub: https://github.com/dayanand0304
-
----
+Dayanand  
+GitHub: [dayanand0304](https://github.com/dayanand0304)
